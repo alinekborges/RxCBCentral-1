@@ -23,14 +23,14 @@ let peripheralManager = RxPeripheralManager()
 let connectionManager = ConnectionManager(rxPeripheralManager: peripheralManager, queue: nil, options: nil)
 
 // connects to the first device found with matching services and characteristics
-let connectionDisposable = 
+let connectionDisposable =
     connectionManager
     .connectToPeripheral(with: [serviceUUID, characteristicUUID], scanMatcher: nil)
     .subscribe(onNext: { (peripheral: RxPeripheral) -> in
         // IMPORTANT: inject the RxPeripheral into the manager after connecting
         self.peripheralManager.rxPeripheral = peripheral
     })
-    
+
 // disconnect
 connectionDisposable.dispose()
 ```
@@ -46,7 +46,7 @@ connectionManager
     .flatMapLatest { (peripheral: RxPeripheral) -> Data in
         // IMPORTANT: inject the RxPeripheral into the manager after connecting
         self.peripheralManager.rxPeripheral = peripheral
-        
+
         return self.peripheralManager.queue(operation: Read(service: serviceUUID, characteristic: characteristicUUID))
     }
     .subscribe(onNext: { (data: Data?) in
@@ -64,7 +64,7 @@ connectionManager
     .flatMapLatest { (peripheral: RxPeripheral) -> Completable in
         // IMPORTANT: inject the RxPeripheral into the manager after connecting
         self.peripheralManager.rxPeripheral = peripheral
-        
+
         return self.peripheralManager.queue(operation: Write(service: serviceUUID, characteristic: characteristicUUID, data: data))
     }
     .subscribe(onCompleted: {
@@ -82,6 +82,10 @@ let peripheralManager = RxPeripheralManager()
 peripheralManager
     .isConnected
     .filter { $0 } // wait until we're connected before performing BLE operations
+    .flatMapLatest{ _ -> Observable<()>
+        // register to listen to pheripheral notifications
+        return self.pheripheralManager.queue(operation: RegisterNotification(service: serviceUUID, characteristic: characteristicUUID))
+    }
     .flatMapLatest { _ -> Observable<Data> in
         // listen for Heart Rate Measurement events
         return self.peripheralManager.receiveNotifications(for: CBUUID(string: "2A37"))
@@ -132,7 +136,7 @@ $ swift build
 
 See the [ExampleApp](https://github.com/uber/RxCBCentral/tree/master/ExampleApp) in this repo for example usages of the library, and visualize low level BLE operations happening in realtime (scanning, discovery events, connecting, etc.).
 
-## License 
+## License
 
 RxCBCentral is licensed under Apache License 2.0. See [LICENSE](LICENSE.txt) for details.
 
